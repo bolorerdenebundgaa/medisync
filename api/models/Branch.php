@@ -3,145 +3,207 @@ class Branch {
     private $conn;
     private $table = "branches";
 
+    public $id;
+    public $name;
+    public $address;
+    public $phone;
+    public $email;
+    public $created_at;
+    public $updated_at;
+
     public function __construct($db) {
         $this->conn = $db;
     }
 
-    public function getAll() {
-        try {
-            // First check if table exists
-            $checkTable = "SHOW TABLES LIKE '" . $this->table . "'";
-            $stmt = $this->conn->prepare($checkTable);
-            $stmt->execute();
-            
-            if ($stmt->rowCount() === 0) {
-                // Create table if it doesn't exist
-                $createTable = "CREATE TABLE IF NOT EXISTS " . $this->table . " (
-                    id VARCHAR(32) PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    location VARCHAR(255) NOT NULL,
-                    is_ecommerce_base BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-                
-                $this->conn->exec($createTable);
-                
-                // Add initial branch
-                $initialBranch = "INSERT INTO " . $this->table . " 
-                    (id, name, location, is_ecommerce_base) 
-                    VALUES ('main-branch-001', 'Main Branch', 'Main Location', TRUE)";
-                $this->conn->exec($initialBranch);
-            }
-            
-            $query = "SELECT * FROM " . $this->table . " ORDER BY name";
-            $stmt = $this->conn->prepare($query);
-            
-            $stmt->execute();
-            
-            $branches = [];
-            while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $branches[] = [
-                    'id' => $row['id'],
-                    'name' => $row['name'],
-                    'location' => $row['location'],
-                    'is_ecommerce_base' => (bool)$row['is_ecommerce_base']
-                ];
-            }
-            
-            return $branches;
-        } catch(Exception $e) {
-            throw $e;
-        }
+    public function read() {
+        $query = "SELECT * FROM " . $this->table . " ORDER BY name ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt;
     }
 
-    public function create($name, $location) {
-        try {
-            $id = bin2hex(random_bytes(16));
-            $query = "INSERT INTO " . $this->table . " (id, name, location) VALUES (:id, :name, :location)";
-            
-            $stmt = $this->conn->prepare($query);
-            
-            $stmt->bindParam(":id", $id);
-            $stmt->bindParam(":name", $name);
-            $stmt->bindParam(":location", $location);
-            
-            error_log("Creating branch with ID: " . $id);
-            error_log("Query: " . $query);
-            
-            return $stmt->execute();
-        } catch(Exception $e) {
-            error_log("Error creating branch: " . $e->getMessage());
-            throw $e;
-        }
+    public function readUserBranches($userId) {
+        $query = "SELECT b.* FROM " . $this->table . " b
+                 INNER JOIN branch_users bu ON b.id = bu.branch_id
+                 WHERE bu.user_id = :user_id AND bu.is_active = 1
+                 ORDER BY b.name ASC";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":user_id", $userId);
+        $stmt->execute();
+        return $stmt;
     }
 
-    public function update($id, $name, $location) {
-        try {
-            $query = "UPDATE " . $this->table . "
-                    SET name = :name,
-                        location = :location
-                    WHERE id = :id";
-            
-            $stmt = $this->conn->prepare($query);
-            
-            $stmt->bindParam(":name", $name);
-            $stmt->bindParam(":location", $location);
-            $stmt->bindParam(":id", $id);
-            
-            return $stmt->execute();
-        } catch(Exception $e) {
-            error_log("Error updating branch: " . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    public function delete($id) {
-        try {
-            // Check if branch is ecommerce base
-            $query = "SELECT is_ecommerce_base FROM " . $this->table . " WHERE id = :id";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":id", $id);
-            $stmt->execute();
-            
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if($row['is_ecommerce_base']) {
-                return false;
-            }
-            
-            $query = "DELETE FROM " . $this->table . " WHERE id = :id";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":id", $id);
-            return $stmt->execute();
-        } catch(Exception $e) {
-            error_log("Error deleting branch: " . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    public function setEcommerceBase($id) {
+    public function create() {
         try {
             $this->conn->beginTransaction();
 
-            // Reset all branches
-            $query = "UPDATE " . $this->table . " SET is_ecommerce_base = FALSE";
+            // Generate UUID
+            $id = bin2hex(random_bytes(16));
+
+            $query = "INSERT INTO " . $this->table . "
+                    SET id = :id,
+                        name = :name,
+                        address = :address,
+                        phone = :phone,
+                        email = :email";
+
             $stmt = $this->conn->prepare($query);
+
+            // Clean data
+            $this->name = htmlspecialchars(strip_tags($this->name));
+            $this->address = htmlspecialchars(strip_tags($this->address));
+            $this->phone = htmlspecialchars(strip_tags($this->phone));
+            $this->email = htmlspecialchars(strip_tags($this->email));
+
+            // Bind data
+            $stmt->bindParam(":id", $id);
+            $stmt->bindParam(":name", $this->name);
+            $stmt->bindParam(":address", $this->address);
+            $stmt->bindParam(":phone", $this->phone);
+            $stmt->bindParam(":email", $this->email);
+
+            if(!$stmt->execute()) {
+                throw new Exception("Failed to create branch");
+            }
+
+            $this->conn->commit();
+            $this->id = $id;
+            return true;
+        } catch(Exception $e) {
+            $this->conn->rollBack();
+            throw $e;
+        }
+    }
+
+    public function update() {
+        $query = "UPDATE " . $this->table . "
+                SET name = :name,
+                    address = :address,
+                    phone = :phone,
+                    email = :email
+                WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+
+        // Clean data
+        $this->name = htmlspecialchars(strip_tags($this->name));
+        $this->address = htmlspecialchars(strip_tags($this->address));
+        $this->phone = htmlspecialchars(strip_tags($this->phone));
+        $this->email = htmlspecialchars(strip_tags($this->email));
+
+        // Bind data
+        $stmt->bindParam(":name", $this->name);
+        $stmt->bindParam(":address", $this->address);
+        $stmt->bindParam(":phone", $this->phone);
+        $stmt->bindParam(":email", $this->email);
+        $stmt->bindParam(":id", $this->id);
+
+        return $stmt->execute();
+    }
+
+    public function delete() {
+        // Check if branch has any active users
+        $query = "SELECT COUNT(*) as count FROM branch_users WHERE branch_id = :id AND is_active = 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":id", $this->id);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if($row['count'] > 0) {
+            throw new Exception("Cannot delete branch with active users");
+        }
+
+        // Check if branch has any inventory
+        $query = "SELECT COUNT(*) as count FROM branch_inventory WHERE branch_id = :id AND quantity > 0";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":id", $this->id);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if($row['count'] > 0) {
+            throw new Exception("Cannot delete branch with existing inventory");
+        }
+
+        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":id", $this->id);
+        return $stmt->execute();
+    }
+
+    public function addUser($userId, $roleId) {
+        try {
+            $this->conn->beginTransaction();
+
+            // Check if user already has a role in this branch
+            $query = "SELECT id FROM branch_users 
+                    WHERE branch_id = :branch_id 
+                    AND user_id = :user_id 
+                    AND role_id = :role_id";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":branch_id", $this->id);
+            $stmt->bindParam(":user_id", $userId);
+            $stmt->bindParam(":role_id", $roleId);
             $stmt->execute();
 
-            // Set new ecommerce base
-            $query = "UPDATE " . $this->table . "
-                    SET is_ecommerce_base = TRUE
-                    WHERE id = :id";
+            if($stmt->rowCount() > 0) {
+                // Update existing record
+                $query = "UPDATE branch_users 
+                        SET is_active = 1 
+                        WHERE branch_id = :branch_id 
+                        AND user_id = :user_id 
+                        AND role_id = :role_id";
+            } else {
+                // Create new record
+                $query = "INSERT INTO branch_users 
+                        SET branch_id = :branch_id,
+                            user_id = :user_id,
+                            role_id = :role_id,
+                            is_active = 1";
+            }
+
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":id", $id);
-            $stmt->execute();
+            $stmt->bindParam(":branch_id", $this->id);
+            $stmt->bindParam(":user_id", $userId);
+            $stmt->bindParam(":role_id", $roleId);
+
+            if(!$stmt->execute()) {
+                throw new Exception("Failed to add user to branch");
+            }
 
             $this->conn->commit();
             return true;
         } catch(Exception $e) {
             $this->conn->rollBack();
-            error_log("Error setting ecommerce base: " . $e->getMessage());
             throw $e;
         }
+    }
+
+    public function removeUser($userId, $roleId) {
+        $query = "UPDATE branch_users 
+                SET is_active = 0 
+                WHERE branch_id = :branch_id 
+                AND user_id = :user_id 
+                AND role_id = :role_id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":branch_id", $this->id);
+        $stmt->bindParam(":user_id", $userId);
+        $stmt->bindParam(":role_id", $roleId);
+        return $stmt->execute();
+    }
+
+    public function getBranchUsers() {
+        $query = "SELECT bu.*, u.email, u.full_name, r.name as role_name
+                FROM branch_users bu
+                INNER JOIN users u ON bu.user_id = u.id
+                INNER JOIN roles r ON bu.role_id = r.id
+                WHERE bu.branch_id = :branch_id AND bu.is_active = 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":branch_id", $this->id);
+        $stmt->execute();
+        return $stmt;
     }
 }

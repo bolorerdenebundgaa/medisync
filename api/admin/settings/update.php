@@ -1,7 +1,7 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: PUT");
+header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
 include_once '../../config/Database.php';
@@ -13,35 +13,59 @@ $db = $database->getConnection();
 
 // Verify admin is authenticated
 $auth = new AdminAuthMiddleware($database);
-if(!$auth->authenticate()) {
+$user = $auth->authenticate();
+if(!$user || $user['role'] !== 'admin') {
+    http_response_code(403);
+    echo json_encode([
+        "success" => false,
+        "message" => "Access denied. Only administrators can update settings."
+    ]);
     exit;
 }
 
-$settings = new Settings($db);
+// Get posted data
 $data = json_decode(file_get_contents("php://input"));
 
-if(!empty($data)) {
-    $settings->vat_percentage = $data->vat_percentage ?? null;
-    $settings->referral_percentage = $data->referral_percentage ?? null;
-    $settings->maintenance_percentage = $data->maintenance_percentage ?? null;
-    
-    if($settings->update()) {
+try {
+    $settingsModel = new Settings($db);
+
+    // Validate settings
+    $errors = $settingsModel->validateSettings([
+        'referee_commission_percentage' => $data->referee_commission_percentage ?? null,
+        'vat_percentage' => $data->vat_percentage ?? null
+    ]);
+
+    if(!empty($errors)) {
+        http_response_code(400);
+        echo json_encode([
+            "success" => false,
+            "message" => "Validation failed",
+            "errors" => $errors
+        ]);
+        exit;
+    }
+
+    // Update settings
+    $updatedSettings = $settingsModel->update([
+        'referee_commission_percentage' => $data->referee_commission_percentage ?? null,
+        'vat_percentage' => $data->vat_percentage ?? null
+    ]);
+
+    if($updatedSettings) {
         http_response_code(200);
         echo json_encode([
             "success" => true,
-            "message" => "Settings updated successfully"
+            "message" => "Settings updated successfully",
+            "data" => $updatedSettings
         ]);
     } else {
-        http_response_code(503);
-        echo json_encode([
-            "success" => false,
-            "message" => "Unable to update settings"
-        ]);
+        throw new Exception("Failed to update settings");
     }
-} else {
-    http_response_code(400);
+
+} catch(Exception $e) {
+    http_response_code(500);
     echo json_encode([
         "success" => false,
-        "message" => "No settings provided"
+        "message" => $e->getMessage()
     ]);
 }

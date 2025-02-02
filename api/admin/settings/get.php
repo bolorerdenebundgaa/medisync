@@ -13,23 +13,25 @@ $db = $database->getConnection();
 
 // Verify admin is authenticated
 $auth = new AdminAuthMiddleware($database);
-if(!$auth->authenticate()) {
+$user = $auth->authenticate();
+if(!$user) {
     exit;
 }
 
-$settings = new Settings($db);
-$result = $settings->get();
+try {
+    $settingsModel = new Settings($db);
+    $settings = $settingsModel->get();
 
-if($result) {
     http_response_code(200);
     echo json_encode([
         "success" => true,
-        "data" => $result
+        "data" => $settings
     ]);
-} else {
-    http_response_code(404);
+
+} catch(Exception $e) {
+    http_response_code(500);
     echo json_encode([
         "success" => false,
-        "message" => "No settings found"
+        "message" => $e->getMessage()
     ]);
 }

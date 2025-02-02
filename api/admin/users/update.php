@@ -28,31 +28,11 @@ if(!$admin) {
 $data = json_decode(file_get_contents("php://input"));
 
 // Validate required fields
-if(!isset($data->email) || !isset($data->password) || !isset($data->full_name) || !isset($data->role_id)) {
+if(!isset($data->id) || !isset($data->updates)) {
     http_response_code(400);
     echo json_encode([
         "success" => false,
         "message" => "Missing required fields"
-    ]);
-    exit;
-}
-
-// Validate email format
-if(!filter_var($data->email, FILTER_VALIDATE_EMAIL)) {
-    http_response_code(400);
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid email format"
-    ]);
-    exit;
-}
-
-// Validate branch_id if role is not admin
-if($data->role_id !== 'admin' && !isset($data->branch_id)) {
-    http_response_code(400);
-    echo json_encode([
-        "success" => false,
-        "message" => "Branch ID is required for non-admin roles"
     ]);
     exit;
 }
@@ -62,34 +42,52 @@ try {
 
     $userModel = new User($db);
 
-    // Check if email already exists
-    if($userModel->emailExists($data->email)) {
-        throw new Exception("Email already exists");
+    // Check if user exists
+    $stmt = $userModel->readOne($data->id);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if(!$user) {
+        throw new Exception("User not found");
     }
 
-    // Create user
-    $userModel->email = $data->email;
-    $userModel->password = password_hash($data->password, PASSWORD_DEFAULT);
-    $userModel->full_name = $data->full_name;
-    $userModel->phone = $data->phone ?? null;
-    $userModel->is_active = true;
+    // Update user fields
+    $updates = array();
 
-    if(!$userModel->create()) {
-        throw new Exception("Failed to create user");
+    if(isset($data->updates->email)) {
+        // Validate email format
+        if(!filter_var($data->updates->email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Invalid email format");
+        }
+
+        // Check if email is already taken by another user
+        if($data->updates->email !== $user['email'] && $userModel->emailExists($data->updates->email)) {
+            throw new Exception("Email already exists");
+        }
+
+        $updates['email'] = $data->updates->email;
     }
 
-    // Assign role
-    if(!$userModel->assignRole(
-        $userModel->id,
-        $data->role_id,
-        $data->branch_id ?? null,
-        $admin['id']
-    )) {
-        throw new Exception("Failed to assign role");
+    if(isset($data->updates->full_name)) {
+        $updates['full_name'] = $data->updates->full_name;
     }
 
-    // Get created user with roles
-    $stmt = $userModel->readOne($userModel->id);
+    if(isset($data->updates->phone)) {
+        $updates['phone'] = $data->updates->phone;
+    }
+
+    if(isset($data->updates->is_active)) {
+        $updates['is_active'] = (bool)$data->updates->is_active;
+    }
+
+    // Update user if there are changes
+    if(!empty($updates)) {
+        if(!$userModel->update($data->id, $updates)) {
+            throw new Exception("Failed to update user");
+        }
+    }
+
+    // Get updated user with roles
+    $stmt = $userModel->readOne($data->id);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Get user roles
@@ -112,10 +110,10 @@ try {
 
     $db->commit();
 
-    http_response_code(201);
+    http_response_code(200);
     echo json_encode([
         "success" => true,
-        "message" => "User created successfully",
+        "message" => "User updated successfully",
         "data" => [$user]
     ]);
 
