@@ -1,97 +1,98 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+require_once __DIR__ . '/../config/Database.php';
 
-include_once '../config/Database.php';
+function initializeDatabase() {
+    try {
+        // Get database configuration
+        $config = require_once __DIR__ . '/../config/config.php';
+        $dbConfig = $config['database'];
 
-$database = new Database();
-$db = $database->getConnection();
+        // Create initial connection without database name
+        $pdo = new PDO(
+            "mysql:host={$dbConfig['host']};charset=utf8mb4",
+            $dbConfig['username'],
+            $dbConfig['password'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]
+        );
 
-try {
-    // Start transaction
-    $db->beginTransaction();
+        // Read and execute SQL file
+        $sql = file_get_contents(__DIR__ . '/database.sql');
+        
+        // Split SQL file into individual statements
+        $statements = array_filter(
+            array_map(
+                'trim',
+                explode(';', $sql)
+            )
+        );
 
-    // Create roles table
-    $db->exec("CREATE TABLE IF NOT EXISTS roles (
-        id CHAR(36) PRIMARY KEY,
-        name VARCHAR(50) NOT NULL UNIQUE,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
+        // Execute each statement
+        foreach ($statements as $statement) {
+            if (!empty($statement)) {
+                $pdo->exec($statement);
+                echo "Executed: " . substr($statement, 0, 50) . "...\n";
+            }
+        }
 
-    // Create users table
-    $db->exec("CREATE TABLE IF NOT EXISTS users (
-        id CHAR(36) PRIMARY KEY,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        full_name VARCHAR(255) NOT NULL,
-        auth_token VARCHAR(255) NULL,
-        token_expires TIMESTAMP NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )");
+        echo "\nDatabase initialization completed successfully!\n";
+        echo "Default admin credentials:\n";
+        echo "Email: admin@medisync.com\n";
+        echo "Password: admin123\n";
 
-    // Create user_roles table
-    $db->exec("CREATE TABLE IF NOT EXISTS user_roles (
-        id CHAR(36) PRIMARY KEY,
-        user_id CHAR(36) NOT NULL,
-        role_id CHAR(36) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_user_role (user_id, role_id)
-    )");
-
-    // Insert default roles
-    $roles = [
-        ['name' => 'admin', 'description' => 'Administrator with full access'],
-        ['name' => 'sales', 'description' => 'Sales staff with POS access'],
-        ['name' => 'referee', 'description' => 'Referee with referral tracking']
-    ];
-
-    foreach ($roles as $role) {
-        $id = $database->generateUUID();
-        $stmt = $db->prepare("INSERT IGNORE INTO roles (id, name, description) VALUES (?, ?, ?)");
-        $stmt->execute([$id, $role['name'], $role['description']]);
+    } catch (PDOException $e) {
+        die("Database initialization failed: " . $e->getMessage() . "\n");
     }
-
-    // Create admin user
-    $adminId = $database->generateUUID();
-    $adminPassword = password_hash('admin123', PASSWORD_BCRYPT);
-    
-    $stmt = $db->prepare("INSERT INTO users (id, email, password, full_name) 
-                         VALUES (?, 'admin@example.com', ?, 'Admin User')
-                         ON DUPLICATE KEY UPDATE
-                         password = VALUES(password)");
-    $stmt->execute([$adminId, $adminPassword]);
-
-    // Get admin role ID
-    $stmt = $db->prepare("SELECT id FROM roles WHERE name = 'admin'");
-    $stmt->execute();
-    $adminRole = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($adminRole) {
-        // Assign admin role
-        $userRoleId = $database->generateUUID();
-        $stmt = $db->prepare("INSERT IGNORE INTO user_roles (id, user_id, role_id) VALUES (?, ?, ?)");
-        $stmt->execute([$userRoleId, $adminId, $adminRole['id']]);
-    }
-
-    $db->commit();
-    
-    http_response_code(200);
-    echo json_encode([
-        "success" => true,
-        "message" => "Database initialized successfully"
-    ]);
-} catch (Exception $e) {
-    $db->rollBack();
-    error_log("Database initialization error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode([
-        "success" => false,
-        "message" => "Error initializing database: " . $e->getMessage()
-    ]);
 }
+
+// Check if script is being run from command line
+if (php_sapi_name() === 'cli') {
+    echo "Starting database initialization...\n";
+    initializeDatabase();
+} else {
+    die("This script should be run from the command line");
+}
+
+function createUploadsDirectory() {
+    $uploadsDir = __DIR__ . '/../uploads';
+    if (!file_exists($uploadsDir)) {
+        if (mkdir($uploadsDir, 0755, true)) {
+            echo "Created uploads directory at: $uploadsDir\n";
+            
+            // Create subdirectories
+            $subdirs = ['products', 'prescriptions', 'profiles'];
+            foreach ($subdirs as $dir) {
+                $path = $uploadsDir . '/' . $dir;
+                if (mkdir($path, 0755, true)) {
+                    echo "Created subdirectory: $dir\n";
+                    
+                    // Create .htaccess to protect uploads directory
+                    $htaccess = $path . '/.htaccess';
+                    $content = "Options -Indexes\n";
+                    $content .= "Order allow,deny\n";
+                    $content .= "Allow from all\n";
+                    $content .= "# Only allow image files\n";
+                    $content .= "<FilesMatch \".(jpg|jpeg|png|gif|webp)$\">\n";
+                    $content .= "    Order Allow,Deny\n";
+                    $content .= "    Allow from all\n";
+                    $content .= "</FilesMatch>\n";
+                    
+                    file_put_contents($htaccess, $content);
+                    echo "Created .htaccess in: $dir\n";
+                }
+            }
+        } else {
+            echo "Failed to create uploads directory\n";
+        }
+    } else {
+        echo "Uploads directory already exists\n";
+    }
+}
+
+// Create necessary directories
+createUploadsDirectory();
+
+echo "\nSetup completed successfully!\n";
