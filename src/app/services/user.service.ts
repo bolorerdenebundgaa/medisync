@@ -1,131 +1,127 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { 
-  User, 
-  UserWithRoles, 
-  UserRegistrationRequest, 
-  UserUpdateRequest,
-  UserRoleUpdateRequest,
-  UserResponse 
-} from '../models/user.model';
+
+export interface UserWithRoles extends User {
+  roles: string[];
+  permissions: string[];
+  branches: string[];
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  branch_id?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserResponse {
+  success: boolean;
+  message?: string;
+  data: UserWithRoles[] | UserWithRoles;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
-  private readonly API_URL = environment.apiUrl;
+  private readonly API_URL = `${environment.apiUrl}/admin/users`;
+  
   private usersSubject = new BehaviorSubject<UserWithRoles[]>([]);
   users$ = this.usersSubject.asObservable();
 
-  constructor(
-    private http: HttpClient,
-    private snackBar: MatSnackBar
-  ) {}
+  constructor(private http: HttpClient) {}
 
   getUsers(): Observable<UserWithRoles[]> {
-    return this.http.get<UserResponse>(`${this.API_URL}/admin/users/list.php`).pipe(
+    return this.http.get<UserResponse>(`${this.API_URL}/list.php`).pipe(
       map((response: UserResponse) => {
         if (!response.success) throw new Error(response.message);
-        this.usersSubject.next(response.data || []);
-        return response.data || [];
-      }),
-      catchError((error: { message?: string }) => {
-        console.error('Error fetching users:', error);
-        this.snackBar.open(error.message || 'Error fetching users', 'Close', { duration: 3000 });
-        return throwError(() => error);
+        const users = Array.isArray(response.data) ? response.data : [response.data];
+        this.usersSubject.next(users);
+        return users;
       })
     );
   }
 
-  createUser(data: UserRegistrationRequest): Observable<User> {
-    return this.http.post<UserResponse>(`${this.API_URL}/admin/users/create.php`, data).pipe(
+  getUser(id: string): Observable<UserWithRoles> {
+    return this.http.get<UserResponse>(`${this.API_URL}/read.php?id=${id}`).pipe(
       map((response: UserResponse) => {
         if (!response.success) throw new Error(response.message);
-        this.snackBar.open('User created successfully', 'Close', { duration: 3000 });
-        this.getUsers().subscribe(); // Refresh users list
-        return response.data?.[0];
-      }),
-      catchError((error: { message?: string }) => {
-        console.error('Error creating user:', error);
-        this.snackBar.open(error.message || 'Error creating user', 'Close', { duration: 3000 });
-        return throwError(() => error);
+        const user = Array.isArray(response.data) ? response.data[0] : response.data;
+        if (!user) throw new Error('User not found');
+        return user;
       })
     );
   }
 
-  updateUser(data: UserUpdateRequest): Observable<User> {
-    return this.http.post<UserResponse>(`${this.API_URL}/admin/users/update.php`, data).pipe(
+  createUser(user: Omit<User, 'id' | 'created_at' | 'updated_at'>): Observable<UserWithRoles> {
+    return this.http.post<UserResponse>(`${this.API_URL}/create.php`, user).pipe(
       map((response: UserResponse) => {
         if (!response.success) throw new Error(response.message);
-        this.snackBar.open('User updated successfully', 'Close', { duration: 3000 });
-        this.getUsers().subscribe(); // Refresh users list
-        return response.data?.[0];
-      }),
-      catchError((error: { message?: string }) => {
-        console.error('Error updating user:', error);
-        this.snackBar.open(error.message || 'Error updating user', 'Close', { duration: 3000 });
-        return throwError(() => error);
+        const newUser = Array.isArray(response.data) ? response.data[0] : response.data;
+        if (!newUser) throw new Error('Failed to create user');
+        const users = this.usersSubject.value;
+        this.usersSubject.next([...users, newUser]);
+        return newUser;
       })
     );
   }
 
-  updateUserRoles(data: UserRoleUpdateRequest): Observable<User> {
-    return this.http.post<UserResponse>(`${this.API_URL}/admin/users/update-role.php`, data).pipe(
+  updateUser(id: string, updates: Partial<User>): Observable<UserWithRoles> {
+    return this.http.post<UserResponse>(`${this.API_URL}/update.php`, { id, ...updates }).pipe(
       map((response: UserResponse) => {
         if (!response.success) throw new Error(response.message);
-        this.snackBar.open('User roles updated successfully', 'Close', { duration: 3000 });
-        this.getUsers().subscribe(); // Refresh users list
-        return response.data?.[0];
-      }),
-      catchError((error: { message?: string }) => {
-        console.error('Error updating user roles:', error);
-        this.snackBar.open(error.message || 'Error updating user roles', 'Close', { duration: 3000 });
-        return throwError(() => error);
+        const updatedUser = Array.isArray(response.data) ? response.data[0] : response.data;
+        if (!updatedUser) throw new Error('Failed to update user');
+        const users = this.usersSubject.value;
+        const index = users.findIndex(u => u.id === id);
+        if (index !== -1) {
+          users[index] = updatedUser;
+          this.usersSubject.next([...users]);
+        }
+        return updatedUser;
       })
     );
   }
 
-  deleteUser(userId: string): Observable<void> {
-    return this.http.post<UserResponse>(`${this.API_URL}/admin/users/delete.php`, { id: userId }).pipe(
+  updateUserRole(id: string, role: string): Observable<UserWithRoles> {
+    return this.http.post<UserResponse>(`${this.API_URL}/update-role.php`, { id, role }).pipe(
       map((response: UserResponse) => {
         if (!response.success) throw new Error(response.message);
-        this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
-        this.getUsers().subscribe(); // Refresh users list
-      }),
-      catchError((error: { message?: string }) => {
-        console.error('Error deleting user:', error);
-        this.snackBar.open(error.message || 'Error deleting user', 'Close', { duration: 3000 });
-        return throwError(() => error);
+        const updatedUser = Array.isArray(response.data) ? response.data[0] : response.data;
+        if (!updatedUser) throw new Error('Failed to update user role');
+        const users = this.usersSubject.value;
+        const index = users.findIndex(u => u.id === id);
+        if (index !== -1) {
+          users[index] = updatedUser;
+          this.usersSubject.next([...users]);
+        }
+        return updatedUser;
       })
     );
   }
 
-  resetPassword(userId: string, newPassword: string): Observable<void> {
-    return this.http.post<UserResponse>(
-      `${this.API_URL}/admin/users/reset-password.php`, 
-      { id: userId, password: newPassword }
-    ).pipe(
-      map((response: UserResponse) => {
+  deleteUser(id: string): Observable<void> {
+    return this.http.post<{success: boolean; message?: string}>(`${this.API_URL}/delete.php`, { id }).pipe(
+      map(response => {
         if (!response.success) throw new Error(response.message);
-        this.snackBar.open('Password reset successfully', 'Close', { duration: 3000 });
-      }),
-      catchError((error: { message?: string }) => {
-        console.error('Error resetting password:', error);
-        this.snackBar.open(error.message || 'Error resetting password', 'Close', { duration: 3000 });
-        return throwError(() => error);
+        const users = this.usersSubject.value;
+        this.usersSubject.next(users.filter(u => u.id !== id));
       })
     );
   }
 
-  getCurrentUsers(): UserWithRoles[] {
-    return this.usersSubject.value;
-  }
-
-  watchUsers(): Observable<UserWithRoles[]> {
-    return this.users$;
+  resetPassword(id: string): Observable<void> {
+    return this.http.post<{success: boolean; message?: string}>(`${this.API_URL}/reset-password.php`, { id }).pipe(
+      map(response => {
+        if (!response.success) throw new Error(response.message);
+      })
+    );
   }
 }

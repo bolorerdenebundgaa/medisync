@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { Product } from '../models/product.model';
 
 export interface CartItem {
   id: string;
@@ -45,7 +44,8 @@ export class CartService {
     this.loadCart();
   }
 
-  private loadCart(): void {
+  // Made public to allow manual refresh
+  loadCart(): void {
     this.getCart().subscribe({
       next: (cart) => {
         this.cartSubject.next(cart);
@@ -133,6 +133,11 @@ export class CartService {
 
   getItemCount(): number {
     return this.itemCountSubject.value;
+  }
+
+  // Alias for getItemCount to maintain backward compatibility
+  getCartItemCount(): number {
+    return this.getItemCount();
   }
 
   getSubtotal(): number {

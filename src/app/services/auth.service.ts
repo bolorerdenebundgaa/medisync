@@ -1,94 +1,184 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of } from 'rxjs';
+import { map, tap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
-import { LoginRequest, LoginResponse, User } from '../models/auth.model';
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  branch_id?: string;
+  permissions?: string[];
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    token: string;
+    user: User;
+  };
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly AUTH_TOKEN_KEY = 'auth_token';
-  private readonly USER_KEY = 'user_data';
-  private userSubject = new BehaviorSubject<User | null>(this.getUserFromStorage());
+  private readonly API_URL = `${environment.apiUrl}/auth`;
+  
+  private userSubject = new BehaviorSubject<User | null>(null);
   user$ = this.userSubject.asObservable();
 
-  constructor(
-    private http: HttpClient,
-    private snackBar: MatSnackBar,
-    private router: Router
-  ) {
-    this.checkStoredAuth();
+  constructor(private http: HttpClient) {
+    this.loadUser();
   }
 
-  private checkStoredAuth(): void {
-    const token = localStorage.getItem(this.AUTH_TOKEN_KEY);
-    const userData = this.getUserFromStorage();
-    if (token && userData) {
-      this.userSubject.next(userData);
+  private loadUser(): void {
+    const userData = localStorage.getItem(environment.auth.userKey);
+    if (userData) {
+      try {
+        this.userSubject.next(JSON.parse(userData));
+      } catch {
+        this.clearAuth();
+      }
     }
   }
 
-  private getUserFromStorage(): User | null {
-    const userData = localStorage.getItem(this.USER_KEY);
-    return userData ? JSON.parse(userData) : null;
-  }
-
-  login(email: string, password: string): Observable<LoginResponse> {
-    const loginRequest: LoginRequest = { email, password };
-    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login.php`, loginRequest)
-      .pipe(
-        tap((response: LoginResponse) => {
-          if (response.success && response.data) {
-            localStorage.setItem(this.AUTH_TOKEN_KEY, response.data.token);
-            const userData: User = {
-              id: response.data.id,
-              email: response.data.email,
-              full_name: response.data.full_name
-            };
-            localStorage.setItem(this.USER_KEY, JSON.stringify(userData));
-            this.userSubject.next(userData);
-            this.snackBar.open('Successfully logged in', 'Close', { duration: 3000 });
-            this.router.navigate(['/inventory']);
-          }
-        }),
-        catchError((error: { error?: { message: string } }) => {
-          console.error('Login error:', error);
-          this.snackBar.open(error.error?.message || 'Login failed', 'Close', { duration: 3000 });
-          return throwError(() => error);
-        })
-      );
-  }
-
-  logout(): void {
-    this.http.post(`${environment.apiUrl}/auth/logout.php`, {}).subscribe({
-      next: () => this.handleLogout(),
-      error: () => this.handleLogout()
-    });
-  }
-
-  private handleLogout(): void {
-    localStorage.removeItem(this.AUTH_TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
-    this.userSubject.next(null);
-    this.router.navigate(['/login']);
-    this.snackBar.open('Successfully logged out', 'Close', { duration: 3000 });
-  }
-
-  getAuthToken(): string | null {
-    return localStorage.getItem(this.AUTH_TOKEN_KEY);
-  }
-
-  isAuthenticated(): Observable<boolean> {
-    return this.user$.pipe(
-      map((user: User | null) => !!user)
+  login(email: string, password: string): Observable<User> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/login.php`, {
+      email,
+      password
+    }).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error(response.message || 'Login failed');
+        }
+        
+        localStorage.setItem(environment.auth.tokenKey, response.data.token);
+        localStorage.setItem(environment.auth.userKey, JSON.stringify(response.data.user));
+        this.userSubject.next(response.data.user);
+        
+        return response.data.user;
+      })
     );
+  }
+
+  logout(): Observable<void> {
+    return this.http.post<{success: boolean}>(`${this.API_URL}/logout.php`, {}).pipe(
+      tap(() => this.clearAuth()),
+      map(() => void 0)
+    );
+  }
+
+  register(userData: {
+    email: string;
+    password: string;
+    full_name: string;
+  }): Observable<User> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/register.php`, userData).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error(response.message || 'Registration failed');
+        }
+        return response.data.user;
+      })
+    );
+  }
+
+  updateProfile(updates: Partial<User>): Observable<User> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/update-profile.php`, updates).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error(response.message || 'Update failed');
+        }
+        
+        const updatedUser = response.data.user;
+        localStorage.setItem(environment.auth.userKey, JSON.stringify(updatedUser));
+        this.userSubject.next(updatedUser);
+        
+        return updatedUser;
+      })
+    );
+  }
+
+  resetPassword(email: string): Observable<void> {
+    return this.http.post<{success: boolean}>(`${this.API_URL}/reset-password.php`, { email }).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error('Password reset failed');
+        }
+      })
+    );
+  }
+
+  verifyEmail(token: string): Observable<void> {
+    return this.http.post<{success: boolean}>(`${this.API_URL}/verify.php`, { token }).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error('Email verification failed');
+        }
+      })
+    );
+  }
+
+  refreshToken(): Observable<string> {
+    const refreshToken = localStorage.getItem(environment.auth.refreshTokenKey);
+    if (!refreshToken) {
+      return of('');
+    }
+
+    return this.http.post<AuthResponse>(`${this.API_URL}/refresh-token.php`, {
+      refresh_token: refreshToken
+    }).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error('Token refresh failed');
+        }
+        
+        localStorage.setItem(environment.auth.tokenKey, response.data.token);
+        return response.data.token;
+      }),
+      catchError(() => {
+        this.clearAuth();
+        return of('');
+      })
+    );
+  }
+
+  hasPermission(userId: string, resource: string, action: string): Observable<boolean> {
+    return this.http.post<{success: boolean; data: boolean}>(`${this.API_URL}/check-permission.php`, {
+      user_id: userId,
+      resource,
+      action
+    }).pipe(
+      map(response => {
+        if (!response.success) {
+          return false;
+        }
+        return response.data;
+      }),
+      catchError(() => of(false))
+    );
+  }
+
+  private clearAuth(): void {
+    localStorage.removeItem(environment.auth.tokenKey);
+    localStorage.removeItem(environment.auth.refreshTokenKey);
+    localStorage.removeItem(environment.auth.userKey);
+    this.userSubject.next(null);
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.userSubject.value;
   }
 
   getCurrentUser(): User | null {
     return this.userSubject.value;
+  }
+
+  hasRole(role: string): boolean {
+    return this.userSubject.value?.role === role;
   }
 }

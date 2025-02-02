@@ -3,26 +3,32 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+
 import { AppComponent } from './app.component';
 import { routes } from './app.routes';
-import { AuthModule } from './core/auth/auth.module';
+import { AuthInterceptor, authInterceptorFactory } from './core/interceptors/auth.interceptor';
+import { CoreModule } from './core/core.module';
 import { SharedModule } from './shared/shared.module';
-import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 
 @NgModule({
+  declarations: [],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
     HttpClientModule,
     RouterModule.forRoot(routes),
-    MatSnackBarModule,
-    AuthModule,
-    SharedModule
+    CoreModule,
+    SharedModule,
+    AppComponent
   ],
   providers: [
-    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
+    {
+      provide: HTTP_INTERCEPTORS,
+      useFactory: authInterceptorFactory,
+      deps: [Router],
+      multi: true
+    }
   ],
   bootstrap: [AppComponent]
 })
-export class AppModule {}
+export class AppModule { }

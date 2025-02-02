@@ -1,34 +1,47 @@
 import { Injectable } from '@angular/core';
-import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { AuthService } from '../../services/auth.service';
+import {
+  HttpRequest,
+  HttpHandler,
+  HttpEvent,
+  HttpInterceptor,
+  HttpErrorResponse
+} from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  constructor(private authService: AuthService) {}
+  constructor(private router: Router) {}
 
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Get stored token using auth service
-    const token = this.authService.getAuthToken();
+  intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
+    const token = localStorage.getItem(environment.auth.tokenKey);
 
     if (token) {
-      // Add Authorization header with Bearer token
-      const headers = new HttpHeaders()
-        .set('Authorization', `Bearer ${token}`)
-        .set('Content-Type', 'application/json')
-        .set('Accept', 'application/json')
-        .set('Cache-Control', 'no-cache');
-
-      // Clone the request with new headers
-      const authReq = req.clone({
-        headers,
-        withCredentials: false
+      request = request.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`
+        }
       });
-
-      return next.handle(authReq);
     }
 
-    // If no token, proceed with original request
-    return next.handle(req);
+    return next.handle(request).pipe(
+      catchError((error: HttpErrorResponse) => {
+        if (error.status === 401) {
+          // Clear auth data and redirect to login
+          localStorage.removeItem(environment.auth.tokenKey);
+          localStorage.removeItem(environment.auth.refreshTokenKey);
+          localStorage.removeItem(environment.auth.userKey);
+          this.router.navigate(['/login']);
+        }
+        return throwError(() => error);
+      })
+    );
   }
+}
+
+// Export a factory function to create the interceptor
+export function authInterceptorFactory(router: Router) {
+  return new AuthInterceptor(router);
 }

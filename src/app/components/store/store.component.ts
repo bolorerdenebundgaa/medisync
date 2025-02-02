@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { ProductCardComponent } from './product-card.component';
@@ -15,6 +16,11 @@ import { ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { Product } from '../../models/product.model';
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 @Component({
   selector: 'app-store',
@@ -30,6 +36,7 @@ import { Product } from '../../models/product.model';
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
+    MatProgressSpinnerModule,
     ProductCardComponent
   ],
   template: `
@@ -77,7 +84,7 @@ import { Product } from '../../models/product.model';
       </div>
 
       <!-- Empty State -->
-      <div *ngIf="products.length === 0" class="text-center py-12">
+      <div *ngIf="products.length === 0 && !loading" class="text-center py-12">
         <mat-icon class="text-6xl text-gray-400">inventory_2</mat-icon>
         <p class="text-xl text-gray-600 mt-4">No products found</p>
       </div>
@@ -91,7 +98,7 @@ import { Product } from '../../models/product.model';
 })
 export class StoreComponent implements OnInit {
   products: Product[] = [];
-  categories: any[] = [];
+  categories: Category[] = [];
   wishlistItems: Set<string> = new Set();
   loading = false;
 
@@ -122,20 +129,27 @@ export class StoreComponent implements OnInit {
   }
 
   private loadWishlist(): void {
-    this.wishlistService.getWishlist().subscribe(items => {
-      this.wishlistItems = new Set(items.map(item => item.product_id));
+    this.wishlistService.getWishlist().subscribe({
+      next: (items) => {
+        this.wishlistItems = new Set(items.map(item => item.product_id));
+      },
+      error: () => {
+        this.snackBar.open('Error loading wishlist', 'Close', { duration: 3000 });
+      }
     });
   }
 
   private setupFilters(): void {
     // Combine all filters
-    const filters$ = [
-      this.searchControl.valueChanges.pipe(debounceTime(300), distinctUntilChanged()),
-      this.categoryControl.valueChanges,
-      this.sortControl.valueChanges
-    ];
+    this.searchControl.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(() => this.loadProducts());
 
-    // Subscribe to filter changes
+    this.categoryControl.valueChanges.subscribe(() => this.loadProducts());
+    this.sortControl.valueChanges.subscribe(() => this.loadProducts());
+
+    // Initial load
     this.loadProducts();
   }
 
