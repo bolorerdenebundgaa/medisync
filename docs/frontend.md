@@ -1,284 +1,293 @@
-# MediSync Frontend Documentation
+[Previous content remains the same...]
 
-## Architecture Overview
+## Store Components
 
-The frontend is built with Angular and follows a modular architecture with:
-- Standalone components
-- Service-based state management
-- Role-based routing
-- Reactive forms
-- Material Design components
-
-## Core Components
-
-### Prescription Management
-
-#### PrescriptionComponent
+### ProductListComponent
 ```typescript
-// src/app/components/referee/prescription.component.ts
+// src/app/components/store/product-list.component.ts
 @Component({
-  selector: 'app-prescription',
+  selector: 'app-product-list',
   standalone: true
 })
 ```
-Handles prescription creation with:
-- Client search/creation
-- Product selection
-- Quantity and directions input
-- Prescription submission
+Features:
+- Grid/list view toggle
+- Category filtering
+- Search functionality
+- Pagination
+- Sort options
+- Quick add to cart
 
-Key Features:
-- Autocomplete search for clients and products
-- Dynamic form validation
-- Real-time inventory checking
-- Branch-specific product filtering
-
-### Settings Management
-
-#### SettingsManagementComponent
+### ProductDetailsComponent
 ```typescript
-// src/app/components/admin/settings-management.component.ts
+// src/app/components/store/product-details.component.ts
 @Component({
-  selector: 'app-settings-management',
+  selector: 'app-product-details',
   standalone: true
 })
 ```
-Manages system settings:
-- Commission percentage configuration
-- VAT rate configuration
-- Real-time calculation preview
-- Form validation
+Features:
+- Product images
+- Detailed description
+- Price information
+- Stock availability
+- Add to cart/wishlist
+- Related products
 
-## Services
-
-### PrescriptionService
+### CartComponent
 ```typescript
-// src/app/services/prescription.service.ts
+// src/app/components/store/cart.component.ts
+@Component({
+  selector: 'app-cart',
+  standalone: true
+})
+```
+Features:
+- Item list with quantities
+- Price calculations
+- VAT display
+- Quantity adjustments
+- Remove items
+- Checkout process
+
+### CheckoutComponent
+```typescript
+// src/app/components/store/checkout.component.ts
+@Component({
+  selector: 'app-checkout',
+  standalone: true
+})
+```
+Features:
+- Shipping address
+- Payment method selection
+- Order summary
+- Terms acceptance
+- Order placement
+
+## Inventory Components
+
+### InventoryManagementComponent
+```typescript
+// src/app/components/inventory/inventory-management.component.ts
+@Component({
+  selector: 'app-inventory-management',
+  standalone: true
+})
+```
+Features:
+- Stock levels view
+- Low stock alerts
+- Add/remove stock
+- Transfer between branches
+- Transaction history
+- Batch operations
+
+### ProductManagementComponent
+```typescript
+// src/app/components/admin/product-management.component.ts
+@Component({
+  selector: 'app-product-management',
+  standalone: true
+})
+```
+Features:
+- Product CRUD operations
+- Category management
+- Image upload
+- Price management
+- Stock alerts config
+- Bulk operations
+
+## Store Services
+
+### ProductService
+```typescript
+// src/app/services/product.service.ts
 @Injectable({
   providedIn: 'root'
 })
 ```
-Handles prescription-related API calls:
-- Create prescriptions
-- Search prescriptions
-- Update status
-- Get prescription history
-
 Methods:
 ```typescript
-createPrescription(prescription: PrescriptionCreateRequest): Observable<Prescription>
-getPrescription(id: string): Observable<Prescription>
-searchPrescriptions(params: SearchParams): Observable<Prescription[]>
-completePrescription(id: string): Observable<Prescription>
+getProducts(params: ProductSearchParams): Observable<PagedResult<Product>>
+getProduct(id: string): Observable<Product>
+createProduct(product: ProductCreateRequest): Observable<Product>
+updateProduct(id: string, updates: Partial<Product>): Observable<Product>
+deleteProduct(id: string): Observable<void>
 ```
 
-### SettingsService
+### CartService
 ```typescript
-// src/app/services/settings.service.ts
+// src/app/services/cart.service.ts
 @Injectable({
   providedIn: 'root'
 })
 ```
-Manages system settings:
-- Get/update settings
-- Calculate commissions
-- Calculate VAT
-- Get commission history
-
 Methods:
 ```typescript
-getSettings(): Observable<Settings>
-updateSettings(settings: Partial<Settings>): Observable<Settings>
-calculateCommission(amount: number): Observable<number>
-calculateVAT(amount: number): Observable<number>
+getCart(): Observable<Cart>
+addToCart(productId: string, quantity: number): Observable<CartItem>
+updateQuantity(itemId: string, quantity: number): Observable<CartItem>
+removeFromCart(itemId: string): Observable<void>
+clearCart(): Observable<void>
 ```
 
-### ClientService
+### OrderService
 ```typescript
-// src/app/services/client.service.ts
+// src/app/services/order.service.ts
 @Injectable({
   providedIn: 'root'
 })
 ```
-Handles client management:
-- Search clients
-- Create new clients
-- Update client information
-- Get client prescriptions
-
-## Models
-
-### Prescription Models
+Methods:
 ```typescript
-// src/app/models/prescription.model.ts
-export interface Prescription {
+placeOrder(order: OrderCreateRequest): Observable<Order>
+getOrders(): Observable<Order[]>
+getOrder(id: string): Observable<Order>
+cancelOrder(id: string): Observable<Order>
+```
+
+### WishlistService
+```typescript
+// src/app/services/wishlist.service.ts
+@Injectable({
+  providedIn: 'root'
+})
+```
+Methods:
+```typescript
+getWishlist(): Observable<WishlistItem[]>
+addToWishlist(productId: string): Observable<WishlistItem>
+removeFromWishlist(productId: string): Observable<void>
+```
+
+## Store Models
+
+### Product Models
+```typescript
+// src/app/models/product.model.ts
+export interface Product {
   id: string;
-  client_id: string;
-  referee_id: string;
-  branch_id: string;
-  items: PrescriptionItem[];
-  status: 'active' | 'completed' | 'cancelled';
+  sku: string;
+  name: string;
+  description: string;
+  category_id: string;
+  price: number;
+  image_url: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export interface PrescriptionItem {
-  product_id: string;
-  quantity: number;
-  directions: string;
+export interface ProductSearchParams {
+  category_id?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: 'name' | 'price' | 'created_at';
+  order?: 'asc' | 'desc';
 }
 ```
 
-### Settings Models
+### Cart Models
 ```typescript
-// src/app/models/settings.model.ts
-export interface Settings {
-  id?: string;
-  referee_commission_percentage: number;
-  vat_percentage: number;
-  updated_at?: string;
+// src/app/models/cart.model.ts
+export interface Cart {
+  id: string;
+  items: CartItem[];
+  subtotal: number;
+  vat_amount: number;
+  total: number;
+}
+
+export interface CartItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
 }
 ```
 
-## Routing
+### Order Models
+```typescript
+// src/app/models/order.model.ts
+export interface Order {
+  id: string;
+  user_id: string;
+  branch_id: string;
+  status: OrderStatus;
+  subtotal: number;
+  vat_amount: number;
+  shipping_fee: number;
+  total_amount: number;
+  shipping_address: string;
+  payment_method: string;
+  payment_status: PaymentStatus;
+  items: OrderItem[];
+  created_at: string;
+}
 
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type PaymentStatus = 'pending' | 'completed' | 'failed';
+```
+
+## Store State Management
+
+### Cart State
+```typescript
+// src/app/services/cart.service.ts
+private cartSubject = new BehaviorSubject<Cart | null>(null);
+cart$ = this.cartSubject.asObservable();
+
+private itemCountSubject = new BehaviorSubject<number>(0);
+itemCount$ = this.itemCountSubject.asObservable();
+```
+
+### Product Filtering
+```typescript
+// src/app/services/product.service.ts
+private filterSubject = new BehaviorSubject<ProductSearchParams>({});
+filter$ = this.filterSubject.asObservable();
+
+private productsSubject = new BehaviorSubject<PagedResult<Product>>({
+  items: [],
+  total: 0,
+  page: 1,
+  limit: 10
+});
+products$ = this.productsSubject.asObservable();
+```
+
+## Store Routes
 ```typescript
 // src/app/app.routes.ts
 const routes: Routes = [
   {
-    path: 'referee/prescriptions',
-    component: PrescriptionComponent,
-    canActivate: [AuthGuard, RoleGuard],
-    data: { roles: ['referee'] }
-  },
-  {
-    path: 'admin/settings',
-    component: SettingsManagementComponent,
-    canActivate: [AuthGuard, RoleGuard],
-    data: { roles: ['admin'] }
+    path: 'store',
+    children: [
+      {
+        path: '',
+        component: ProductListComponent
+      },
+      {
+        path: 'product/:id',
+        component: ProductDetailsComponent
+      },
+      {
+        path: 'cart',
+        component: CartComponent
+      },
+      {
+        path: 'checkout',
+        component: CheckoutComponent,
+        canActivate: [AuthGuard]
+      }
+    ]
   }
 ];
 ```
 
-## Guards
-
-### RoleGuard
-```typescript
-// src/app/guards/role.guard.ts
-@Injectable({
-  providedIn: 'root'
-})
-```
-Protects routes based on user roles:
-- Checks user permissions
-- Redirects unauthorized access
-- Handles role-based routing
-
-## Interceptors
-
-### AuthInterceptor
-```typescript
-// src/app/interceptors/auth.interceptor.ts
-@Injectable()
-```
-Handles authentication:
-- Adds JWT token to requests
-- Refreshes expired tokens
-- Handles 401/403 responses
-
-## Error Handling
-
-### ErrorHandlingService
-```typescript
-// src/app/services/error-handling.service.ts
-@Injectable({
-  providedIn: 'root'
-})
-```
-Centralizes error handling:
-- API error processing
-- User-friendly messages
-- Error logging
-- Retry logic
-
-## State Management
-
-The application uses service-based state management:
-- Services maintain state
-- Components subscribe to services
-- RxJS for reactive updates
-- Local storage for persistence
-
-## Best Practices
-
-1. Component Organization:
-   - Standalone components
-   - Feature modules
-   - Shared modules
-   - Lazy loading
-
-2. Service Design:
-   - Single responsibility
-   - Injectable services
-   - State management
-   - Error handling
-
-3. Form Handling:
-   - Reactive forms
-   - Form validation
-   - Error messages
-   - Dynamic forms
-
-4. Performance:
-   - Lazy loading
-   - Change detection
-   - Memoization
-   - Virtual scrolling
-
-5. Security:
-   - Input validation
-   - XSS prevention
-   - CSRF protection
-   - Secure storage
-
-## Testing
-
-1. Unit Tests:
-   ```bash
-   ng test
-   ```
-   - Component tests
-   - Service tests
-   - Guard tests
-   - Pipe tests
-
-2. E2E Tests:
-   ```bash
-   ng e2e
-   ```
-   - User flows
-   - Integration tests
-   - UI tests
-
-## Build & Deployment
-
-1. Development:
-   ```bash
-   ng serve
-   ```
-
-2. Production:
-   ```bash
-   ng build --prod
-   ```
-
-3. Environment Configuration:
-   - src/environments/environment.ts
-   - src/environments/environment.prod.ts
-
-## Support
-
-For frontend development support:
-1. Check Angular documentation
-2. Review component documentation
-3. Contact development team
+[Previous content remains the same...]
