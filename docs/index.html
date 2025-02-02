@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediSync Documentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #635bff;
+            --text-color: #2a2f45;
+            --border-color: #e6e6e6;
+            --code-bg: #f6f8fa;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        
+        nav {
+            background: #fff;
+            border-right: 1px solid var(--border-color);
+            padding: 2rem;
+            position: fixed;
+            width: 250px;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        nav ul {
+            list-style: none;
+        }
+        
+        nav ul ul {
+            margin-left: 1rem;
+        }
+        
+        nav li {
+            margin-bottom: 0.5rem;
+        }
+        
+        nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: block;
+            padding: 0.25rem 0;
+        }
+        
+        nav a:hover {
+            color: var(--primary-color);
+        }
+        
+        .content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            grid-column: 2;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+        }
+        
+        h2 {
+            font-size: 1.75rem;
+            margin: 2rem 0 1rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        h3 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 1rem;
+            color: var(--primary-color);
+        }
+        
+        .endpoint {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+        }
+        
+        .get { background: #e3f2fd; color: #1565c0; }
+        .post { background: #e8f5e9; color: #2e7d32; }
+        .put { background: #fff3e0; color: #f57c00; }
+        .delete { background: #ffebee; color: #c62828; }
+        
+        code {
+            font-family: 'Monaco', monospace;
+            background: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        pre {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            font-weight: 600;
+            background: var(--code-bg);
+        }
+
+        .file-tree {
+            font-family: 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .file-tree ul {
+            list-style: none;
+            margin-left: 1.5rem;
+        }
+
+        .file-tree li {
+            position: relative;
+        }
+
+        .file-tree li::before {
+            content: "├── ";
+            position: absolute;
+            left: -1.5rem;
+        }
+
+        .file-tree li:last-child::before {
+            content: "└── ";
+        }
+
+        .folder::before {
+            content: "📁 ";
+        }
+
+        .file::before {
+            content: "📄 ";
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li>
+                    <a href="#project-structure">Project Structure</a>
+                    <ul>
+                        <li><a href="#root-directory">Root Directory</a></li>
+                        <li><a href="#api-directory">API Directory</a></li>
+                        <li><a href="#frontend-directory">Frontend Directory</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#api-endpoints">API Endpoints</a>
+                    <ul>
+                        <li><a href="#auth-endpoints">Authentication</a></li>
+                        <li><a href="#admin-endpoints">Admin</a></li>
+                        <li><a href="#inventory-endpoints">Inventory</a></li>
+                        <li><a href="#store-endpoints">Store</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#database">Database Schema</a>
+                    <ul>
+                        <li><a href="#users-tables">Users Tables</a></li>
+                        <li><a href="#inventory-tables">Inventory Tables</a></li>
+                        <li><a href="#store-tables">Store Tables</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <h1>MediSync Documentation</h1>
+
+            <section id="overview">
+                <h2>Overview</h2>
+                <p>MediSync is an inventory management system for medical supplies with integrated e-commerce capabilities. The system is built using Angular for the frontend and PHP for the backend API, with MySQL as the database.</p>
+                <h4>Architecture Overview</h4>
+Frontend: Angular 17
+Backend: PHP REST API
+Database: MySQL
+Authentication: JWT-based dual system (Admin & Web Users)
+<h4>Key Features</h4>
+Inventory Management
+Point of Sale (POS)
+E-commerce Store
+Role-based Access Control
+Multi-branch Support
+            </section>
+
+            <section id="project-structure">
+                <h2>Project Structure</h2>
+
+                <section id="root-directory">
+                    <h3>Root Directory</h3>
+                    <div class="file-tree">
+                        <ul>
+                            <li class="file">.env - Environment variables</li>
+                            <li class="file">.htaccess - Apache configuration</li>
+                            <li class="file">angular.json - Angular configuration</li>
+                            <li class="file">package.json - NPM dependencies</li>
+                            <li class="folder">api/ - Backend API</li>
+                            <li class="folder">src/ - Frontend source</li>
+                            <li class="folder">docs/ - Documentation</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="api-directory">
+                    <h3>API Directory</h3>
+                    <div class="file-tree">
+                        <ul>
+                            <li class="file">.env - API environment variables</li>
+                            <li class="file">.htaccess - API Apache configuration</li>
+                            <li class="file">index.php - API entry point</li>
+                            <li class="file">cors.php - CORS configuration</li>
+                            <li class="folder">admin/
+                                <ul>
+                                    <li class="folder">auth/ - Admin authentication
+                                        <ul>
+                                            <li class="file">login.php - Admin login</li>
+                                            <li class="file">logout.php - Admin logout</li>
+                                            <li class="file">register.php - Admin registration</li>
+                                            <li class="file">verify.php - Token verification</li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">branches/ - Branch management
+                                        <ul>
+                                            <li class="file">create.php - Create branch</li>
+                                            <li class="file">delete.php - Delete branch</li>
+                                            <li class="file">list.php - List branches</li>
+                                            <li class="file">update.php - Update branch</li>
+                                            <li class="file">set-ecommerce-base.php - Set ecommerce base</li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">categories/ - Category management
+                                        <ul>
+                                            <li class="file">create.php - Create category</li>
+                                            <li class="file">delete.php - Delete category</li>
+                                            <li class="file">list.php - List categories</li>
+                                            <li class="file">update.php - Update category</li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">inventory/ - Inventory management
+                                        <ul>
+                                            <li class="file">alerts.php - Stock alerts</li>
+                                            <li class="file">adjust-stock.php - Adjust stock levels</li>
+                                            <li class="folder">batch-operations/
+                                                <ul>
+                                                    <li class="file">create.php - Create batch operation</li>
+                                                    <li class="file">list.php - List operations</li>
+                                                    <li class="file">process.php - Process operation</li>
+                                                </ul>
+                                            </li>
+                                            <li class="folder">transfers/
+                                                <ul>
+                                                    <li class="file">create.php - Create transfer</li>
+                                                    <li class="file">list.php - List transfers</li>
+                                                    <li class="file">process.php - Process transfer</li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">settings/ - System settings
+                                        <ul>
+                                            <li class="file">get.php - Get settings</li>
+                                            <li class="file">update.php - Update settings</li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">users/ - User management
+                                        <ul>
+                                            <li class="file">create.php - Create user</li>
+                                            <li class="file">delete.php - Delete user</li>
+                                            <li class="file">list.php - List users</li>
+                                            <li class="file">update-role.php - Update user role</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="folder">auth/ - Web user authentication
+                                <ul>
+                                    <li class="file">login.php - User login</li>
+                                    <li class="file">logout.php - User logout</li>
+                                    <li class="file">register.php - User registration</li>
+                                    <li class="file">reset-password.php - Password reset</li>
+                                    <li class="file">update-profile.php - Update profile</li>
+                                    <li class="file">verify.php - Token verification</li>
+                                </ul>
+                            </li>
+                            <li class="folder">cart/ - Shopping cart
+                                <ul>
+                                    <li class="file">add.php - Add to cart</li>
+                                    <li class="file">clear.php - Clear cart</li>
+                                    <li class="file">get.php - Get cart</li>
+                                    <li class="file">remove.php - Remove from cart</li>
+                                </ul>
+                            </li>
+                            <li class="folder">config/ - Configuration
+                                <ul>
+                                    <li class="file">Database.php - Database connection</li>
+                                </ul>
+                            </li>
+                            <li class="folder">middleware/ - Middleware
+                                <ul>
+                                    <li class="file">AdminAuthMiddleware.php - Admin authentication</li>
+                                </ul>
+                            </li>
+                            <li class="folder">models/ - Database models
+                                <ul>
+                                    <li class="file">Admin.php - Admin model</li>
+                                    <li class="file">Branch.php - Branch model</li>
+                                    <li class="file">Cart.php - Cart model</li>
+                                    <li class="file">Category.php - Category model</li>
+                                    <li class="file">Inventory.php - Inventory model</li>
+                                    <li class="file">Order.php - Order model</li>
+                                    <li class="file">Product.php - Product model</li>
+                                    <li class="file">Settings.php - Settings model</li>
+                                    <li class="file">User.php - User model</li>
+                                    <li class="file">WebUser.php - Web user model</li>
+                                </ul>
+                            </li>
+                            <li class="folder">store/ - Store endpoints
+                                <ul>
+                                    <li class="file">orders.php - Order management</li>
+                                    <li class="file">place-order.php - Place order</li>
+                                </ul>
+                            </li>
+                            <li class="folder">upload/ - File uploads
+                                <ul>
+                                    <li class="file">image.php - Image upload</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="frontend-directory">
+                    <h3>Frontend Directory</h3>
+                    <div class="file-tree">
+                        <ul>
+                            <li class="folder">app/
+                                <ul>
+                                    <li class="folder">core/ - Core functionality
+                                        <ul>
+                                            <li class="folder">auth/ - Authentication
+                                                <ul>
+                                                    <li class="file">auth.service.ts - Authentication service</li>
+                                                    <li class="file">web-auth.service.ts - Web user auth service</li>
+                                                    <li class="file">admin-auth.service.ts - Admin auth service</li>
+                                                </ul>
+                                            </li>
+                                            <li class="folder">guards/
+                                                <ul>
+                                                    <li class="file">auth.guard.ts - Authentication guard</li>
+                                                    <li class="file">admin-auth.guard.ts - Admin auth guard</li>
+                                                    <li class="file">permission.guard.ts - Permission guard</li>
+                                                </ul>
+                                            </li>
+                                            <li class="folder">interceptors/
+                                                <ul>
+                                                    <li class="file">auth.interceptor.ts - Auth interceptor</li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">features/ - Feature modules
+                                        <ul>
+                                            <li class="folder">admin/
+                                                <ul>
+                                                    <li class="file">branch-management.component.ts</li>
+                                                    <li class="file">user-management.component.ts</li>
+                                                    <li class="file">settings.component.ts</li>
+                                                </ul>
+                                            </li>
+                                            <li class="folder">inventory/
+                                                <ul>
+                                                    <li class="file">product-list.component.ts</li>
+                                                    <li class="file">batch-operation-list.component.ts</li>
+                                                    <li class="file">transfer-list.component.ts</li>
+                                                    <li class="file">alert-list.component.ts</li>
+                                                </ul>
+                                            </li>
+                                            <li class="folder">pos/
+                                                <ul>
+                                                    <li class="file">pos.component.ts</li>
+                                                    <li class="file">checkout-dialog.component.ts</li>
+                                                    <li class="file">client-form.component.ts</li>
+                                                </ul>
+                                            </li>
+                                            <li class="folder">store/
+                                                <ul>
+                                                    <li class="file">store.component.ts</li>
+                                                    <li class="file">cart.component.ts</li>
+                                                    <li class="file">product-detail.component.ts</li>
+                                                    <li class="file">checkout.component.ts</li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">models/ - Data models
+                                        <ul>
+                                            <li class="file">product.model.ts</li>
+                                            <li class="file">branch.model.ts</li>
+                                            <li class="file">user.model.ts</li>
+                                            <li class="file">order.model.ts</li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">services/ - API services
+                                        <ul>
+                                            <li class="file">inventory.service.ts</li>
+                                            <li class="file">branch.service.ts</li>
+                                            <li class="file">cart.service.ts</li>
+                                            <li class="file">order.service.ts</li>
+                                        </ul>
+                                    </li>
+                                    <li class="folder">shared/ - Shared components
+                                        <ul>
+                                            <li class="file">shared.module.ts</li>
+                                            <li class="file">product-card.component.ts</li>
+                                            <li class="file">loading-spinner.component.ts</li>
+                                        </ul>
+                                    </li>
+                                    <li class="file">app.component.ts - Root component</li>
+                                    <li class="file">app.module.ts - Root module</li>
+                                    <li class="file">app.routes.ts - Route configuration</li>
+                                </ul>
+                                </ul>
+                            </li>
+                            <li class="folder">assets/ - Static assets
+                                <ul>
+                                    <li class="file">default.jpg - Default product image</li>
+                                    <li class="folder">icons/</li>
+                                    <li class="folder">images/</li>
+                                </ul>
+                            </li>
+                            <li class="folder">environments/ - Environment configs
+                                <ul>
+                                    <li class="file">environment.ts - Development config</li>
+                                    <li class="file">environment.prod.ts - Production config</li>
+                                </ul>
+                            </li>
+                            <li class="file">index.html - Main HTML file</li>
+                            <li class="file">styles.css - Global styles</li>
+                            <li class="file">main.ts - Application entry point</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <section id="api-endpoints">
+    <h2>API Endpoints</h2>
+
+    <section id="authentication">
+        <h2>Authentication</h2>
+        <h3>Overview</h3>
+        <p>The API uses JWT Bearer tokens for authentication. Include the token in the Authorization header for all protected endpoints.</p>
+        
+        <div class="endpoint">
+            <h4>Authentication Header Format</h4>
+            <code>Authorization: Bearer &lt;token&gt;</code>
+            
+            <h4>Token Lifetime</h4>
+            <ul>
+                <li>Access tokens expire after 24 hours</li>
+                <li>Refresh tokens expire after 7 days</li>
+            </ul>
+            
+            <h4>Error Responses</h4>
+            <pre>{
+  "success": false,
+  "message": "Invalid or expired token",
+  "code": "AUTH_ERROR"
+}</pre>
+        </div>
+    </section>
+
+    <section id="web-auth">
+        <h2>Web Authentication</h2>
+        
+        <h3>Register New User</h3>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/auth/register.php</code>
+        </div>
+        <h4>Request Body</h4>
+        <pre>{
+  "email": "user@example.com",
+  "password": "password123",
+  "full_name": "John Doe"
+}</pre>
+        
+        <h4>Success Response (201 Created)</h4>
+        <pre>{
+  "success": true,
+  "data": {
+    "id": "user_id",
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "token": "auth_token"
+  }
+}</pre>
+        
+        <h4>Error Responses</h4>
+        <pre>
+400 Bad Request
+{
+  "success": false,
+  "message": "Email already exists"
+}
+
+500 Internal Server Error
+{
+  "success": false,
+  "message": "Registration failed"
+}</pre>
+
+        <h3>Login</h3>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/auth/login.php</code>
+        </div>
+        <h4>Request Body</h4>
+        <pre>{
+  "email": "user@example.com",
+  "password": "password123"
+}</pre>
+        
+        <h4>Success Response (200 OK)</h4>
+        <pre>{
+  "success": true,
+  "data": {
+    "id": "user_id",
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "token": "auth_token"
+  }
+}</pre>
+        
+        <h4>Error Responses</h4>
+        <pre>
+401 Unauthorized
+{
+  "success": false,
+  "message": "Invalid credentials"
+}
+
+400 Bad Request
+{
+  "success": false,
+  "message": "Email and password are required"
+}</pre>
+
+        <h3>Reset Password</h3>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/auth/reset-password.php</code>
+        </div>
+        <h4>Request Body</h4>
+        <pre>{
+  "email": "user@example.com"
+}</pre>
+        
+        <h4>Success Response (200 OK)</h4>
+        <pre>{
+  "success": true,
+  "message": "Password reset instructions sent to your email"
+}</pre>
+        
+        <h4>Error Responses</h4>
+        <pre>
+404 Not Found
+{
+  "success": false,
+  "message": "Email not found"
+}
+
+400 Bad Request
+{
+  "success": false,
+  "message": "Email is required"
+}</pre>
+    </section>
+
+    <section id="admin-auth">
+        <h2>Admin Authentication</h2>
+        
+        <h3>Admin Login</h3>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/auth/login.php</code>
+        </div>
+        <h4>Request Body</h4>
+        <pre>{
+  "email": "admin@example.com",
+  "password": "admin123"
+}</pre>
+        
+        <h4>Success Response (200 OK)</h4>
+        <pre>{
+  "success": true,
+  "data": {
+    "id": "admin_id",
+    "email": "admin@example.com",
+    "full_name": "Admin User",
+    "role": "admin",
+    "token": "admin_token"
+  }
+}</pre>
+        
+        <h4>Error Responses</h4>
+        <pre>
+401 Unauthorized
+{
+  "success": false,
+  "message": "Invalid credentials"
+}
+
+400 Bad Request
+{
+  "success": false,
+  "message": "Email and password are required"
+}</pre>
+
+        <h3>Admin Verify Token</h3>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/auth/verify.php</code>
+        </div>
+        <h4>Request Headers</h4>
+        <pre>Authorization: Bearer admin_token</pre>
+        
+        <h4>Success Response (200 OK)</h4>
+        <pre>{
+  "success": true,
+  "data": {
+    "id": "admin_id",
+    "email": "admin@example.com",
+    "full_name": "Admin User",
+    "role": "admin"
+  }
+}</pre>
+        
+        <h4>Error Responses</h4>
+        <pre>
+401 Unauthorized
+{
+  "success": false,
+  "message": "Invalid or expired token"
+}</pre>
+
+        <h3>Admin Logout</h3>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/auth/logout.php</code>
+        </div>
+        <h4>Request Body</h4>
+        <pre>{
+  "token": "admin_token"
+}</pre>
+        
+        <h4>Success Response (200 OK)</h4>
+        <pre>{
+  "success": true,
+  "message": "Successfully logged out"
+}</pre>
+        
+        <h4>Error Responses</h4>
+        <pre>
+400 Bad Request
+{
+  "success": false,
+  "message": "Token is required"
+}</pre>
+    </section>
+
+    <section id="admin-api">
+        <h2>Admin API</h2>
+        
+        <div class="notice">
+            <p><strong>Note:</strong> All Admin API endpoints require a valid admin authentication token in the Authorization header.</p>
+        </div>
+        
+        <h3>Branch Management</h3>
+        
+        <h4>List Branches</h4>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/admin/branches/list.php</code>
+        </div>
+        <p>Get a list of all branches.</p>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": "branch_id",
+      "name": "Main Branch",
+      "location": "123 Main St",
+      "is_ecommerce_base": true
+    }
+  ]
+}</pre>
+        
+        <h4>Create Branch</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/branches/create.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "name": "New Branch",
+  "location": "456 Branch St"
+}</pre>
+        
+        <h5>Success Response (201 Created)</h5>
+        <pre>{
+  "success": true,
+  "message": "Branch created successfully"
+}</pre>
+        
+        <h5>Error Responses</h5>
+        <pre>
+400 Bad Request
+{
+  "success": false,
+  "message": "Name and location are required"
+}
+
+503 Service Unavailable
+{
+  "success": false,
+  "message": "Unable to create branch"
+}</pre>
+
+        <h4>Update Branch</h4>
+        <div class="endpoint">
+            <span class="method put">PUT</span>
+            <code>/admin/branches/update.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "branch_id",
+  "name": "Updated Branch",
+  "location": "789 New St"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Branch updated successfully"
+}</pre>
+
+        <h4>Delete Branch</h4>
+        <div class="endpoint">
+            <span class="method delete">DELETE</span>
+            <code>/admin/branches/delete.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "branch_id"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Branch deleted successfully"
+}</pre>
+        
+        <h5>Error Response</h5>
+        <pre>
+503 Service Unavailable
+{
+  "success": false,
+  "message": "Unable to delete branch. It may be the ecommerce base branch."
+}</pre>
+
+        <h4>Set E-commerce Base</h4>
+        <div class="endpoint">
+            <span class="method put">PUT</span>
+            <code>/admin/branches/set-ecommerce-base.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "branch_id"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Branch set as ecommerce base successfully"
+}</pre>
+
+        <h3>Category Management</h3>
+        
+        <h4>List Categories</h4>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/admin/categories/list.php</code>
+        </div>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "records": [
+    {
+      "id": "category_id",
+      "name": "Vitamins",
+      "description": "Vitamin supplements",
+      "parent_id": null,
+      "created_at": "2025-01-10 17:12:14"
+    }
+  ]
+}</pre>
+
+        <h4>Create Category</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/categories/create.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "name": "New Category",
+  "description": "Category description",
+  "parent_id": null
+}</pre>
+        
+        <h5>Success Response (201 Created)</h5>
+        <pre>{
+  "success": true,
+  "message": "Category created successfully"
+}</pre>
+        
+        <h5>Error Responses</h5>
+        <pre>
+400 Bad Request
+{
+  "success": false,
+  "message": "Category name is required"
+}
+
+503 Service Unavailable
+{
+  "success": false,
+  "message": "Unable to create category"
+}</pre>
+
+        <h4>Update Category</h4>
+        <div class="endpoint">
+            <span class="method put">PUT</span>
+            <code>/admin/categories/update.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "category_id",
+  "name": "Updated Category",
+  "description": "Updated description",
+  "parent_id": null
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Category updated successfully"
+}</pre>
+
+        <h4>Delete Category</h4>
+        <div class="endpoint">
+            <span class="method delete">DELETE</span>
+            <code>/admin/categories/delete.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "category_id"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Category deleted successfully"
+}</pre>
+
+        <h3>Inventory Management</h3>
+        
+        <h4>Get Inventory Alerts</h4>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/admin/inventory/alerts.php</code>
+        </div>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": "alert_id",
+      "type": "low_stock",
+      "branch_id": "branch_id",
+      "branch_name": "Main Branch",
+      "product_id": "product_id",
+      "product_name": "Product Name",
+      "threshold": 10,
+      "status": "active",
+      "created_at": "2025-01-12 14:51:15"
+    }
+  ]
+}</pre>
+
+        <h4>Adjust Stock</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/inventory/adjust-stock.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "product_id": "product_id",
+  "quantity_change": 10,
+  "reason": "Restock"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Stock adjusted successfully"
+}</pre>
+
+        <h4>List Batch Operations</h4>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/admin/inventory/batch-operations/list.php</code>
+        </div>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": "operation_id",
+      "type": "adjustment",
+      "status": "pending",
+      "branch_id": "branch_id",
+      "branch_name": "Main Branch",
+      "notes": "Monthly stocktake",
+      "items": [
+        {
+          "product_id": "product_id",
+          "product_name": "Product Name",
+          "current_quantity": 50,
+          "new_quantity": 45,
+          "reason": "Damaged"
+        }
+      ],
+      "created_at": "2025-01-12 14:51:15"
+    }
+  ]
+}</pre>
+
+        <h4>Create Batch Operation</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/inventory/batch-operations/create.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "type": "adjustment",
+  "branch_id": "branch_id",
+  "notes": "Monthly stocktake",
+  "items": [
+    {
+      "product_id": "product_id",
+      "current_quantity": 50,
+      "new_quantity": 45,
+      "reason": "Damaged"
+    }
+  ]
+}</pre>
+        
+        <h5>Success Response (201 Created)</h5>
+        <pre>{
+  "success": true,
+  "message": "Batch operation created successfully"
+}</pre>
+
+        <h4>Process Batch Operation</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/inventory/batch-operations/process.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "operation_id"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Batch operation processed successfully"
+}</pre>
+
+        <h4>List Inventory Transfers</h4>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/admin/inventory/transfers/list.php</code>
+        </div>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": "transfer_id",
+      "from_branch": {
+        "id": "branch_id",
+        "name": "Main Branch"
+      },
+      "to_branch": {
+        "id": "branch_id",
+        "name": "North Branch"
+      },
+      "product": {
+        "id": "product_id",
+        "name": "Product Name"
+      },
+      "quantity": 10,
+      "status": "pending",
+      "notes": "Regular stock transfer",
+      "created_at": "2025-01-12 14:51:15"
+    }
+  ]
+}</pre>
+
+        <h4>Create Transfer</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/inventory/transfers/create.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "from_branch_id": "source_branch_id",
+  "to_branch_id": "destination_branch_id",
+  "product_id": "product_id",
+  "quantity": 10,
+  "notes": "Regular stock transfer"
+}</pre>
+        
+        <h5>Success Response (201 Created)</h5>
+        <pre>{
+  "success": true,
+  "message": "Transfer created successfully"
+}</pre>
+
+        <h4>Process Transfer</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/admin/inventory/transfers/process.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "id": "transfer_id"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Transfer processed successfully"
+}</pre>
+
+        <h3>Store API</h3>
+        
+        <h4>Get Orders</h4>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/store/orders.php</code>
+        </div>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": "order_id",
+      "created_at": "2025-01-12 14:51:15",
+      "status": "completed",
+      "total_amount": 39.98,
+      "items": [
+        {
+          "name": "Product Name",
+          "quantity": 2,
+          "price": 19.99
+        }
+      ]
+    }
+  ]
+}</pre>
+
+        <h4>Place Order</h4>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/store/place-order.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "items": [
+    {
+      "product_id": "product_id",
+      "quantity": 2
+    }
+  ],
+  "customer_details": {
+    "full_name": "John Doe",
+    "email": "john@example.com",
+    "phone": "+1234567890",
+    "address": "123 Street"
+  },
+  "payment_method": "card"
+}</pre>
+        
+        <h5>Success Response (201 Created)</h5>
+        <pre>{
+  "success": true,
+  "message": "Order placed successfully"
+}</pre>
+
+        <h4>Cart Operations</h4>
+        
+        <h5>Get Cart</h5>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/cart/get.php?guest_cart_id=CART_ID</code>
+        </div>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "product_id",
+        "name": "Product Name",
+        "price": 19.99,
+        "quantity": 2,
+        "photo_url": "image_url"
+      }
+    ]
+  }
+}</pre>
+
+        <h5>Add to Cart</h5>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/cart/add.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "product_id": "product_id",
+  "quantity": 1,
+  "guest_cart_id": "CART_ID"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Product added to cart"
+}</pre>
+
+        <h5>Remove from Cart</h5>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/cart/remove.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "product_id": "product_id",
+  "guest_cart_id": "CART_ID"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Product removed from cart"
+}</pre>
+
+        <h5>Clear Cart</h5>
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/cart/clear.php</code>
+        </div>
+        
+        <h5>Request Body</h5>
+        <pre>{
+  "guest_cart_id": "CART_ID"
+}</pre>
+        
+        <h5>Success Response (200 OK)</h5>
+        <pre>{
+  "success": true,
+  "message": "Cart cleared successfully"
+}</pre>
+    </section>
+</section>
+
+            [Rest of the document remains unchanged]
+        </div>
+    </div>
+</body>
+</html>

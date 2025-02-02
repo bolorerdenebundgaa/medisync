@@ -1,0 +1,217 @@
+<mat-toolbar color="primary" class="flex justify-between items-center">
+  <a routerLink="/" class="text-white no-underline flex items-center">
+    <span class="text-xl font-bold">MediSync</span>
+  </a>
+
+  <!-- Desktop Navigation -->
+  <nav class="hidden md:flex items-center gap-4">
+    <!-- Store navigation - always visible -->
+    <a mat-button routerLink="/store" routerLinkActive="active">
+      <mat-icon>store</mat-icon>
+      Store
+    </a>
+
+    <!-- Admin navigation -->
+    <ng-container *ngIf="adminAuth.user$ | async">
+      <button mat-button [matMenuTriggerFor]="adminMenu">
+        <mat-icon>admin_panel_settings</mat-icon>
+        Admin Menu
+      </button>
+      <mat-menu #adminMenu="matMenu">
+        <a mat-menu-item routerLink="/admin/dashboard">
+          <mat-icon>dashboard</mat-icon>
+          Dashboard
+        </a>
+        <a mat-menu-item routerLink="/admin/settings/branches">
+          <mat-icon>store</mat-icon>
+          Branches
+        </a>
+        <a mat-menu-item routerLink="/admin/settings/categories">
+          <mat-icon>category</mat-icon>
+          Categories
+        </a>
+        <a mat-menu-item routerLink="/admin/settings/users">
+          <mat-icon>people</mat-icon>
+          Users
+        </a>
+        <a mat-menu-item routerLink="/admin/settings/general">
+          <mat-icon>settings</mat-icon>
+          Settings
+        </a>
+      </mat-menu>
+
+      <a mat-button routerLink="/inventory">
+        <mat-icon>inventory_2</mat-icon>
+        Inventory
+      </a>
+      
+      <a mat-button routerLink="/pos">
+        <mat-icon>point_of_sale</mat-icon>
+        POS
+      </a>
+    </ng-container>
+
+    <!-- Cart button - only show for web users -->
+    <ng-container *ngIf="!(adminAuth.user$ | async)">
+      <a mat-button routerLink="/cart" [matBadge]="cartItemCount$ | async" matBadgeColor="accent">
+        <mat-icon>shopping_cart</mat-icon>
+        Cart
+      </a>
+    </ng-container>
+
+    <!-- Admin User Menu -->
+    <ng-container *ngIf="adminAuth.user$ | async as user">
+      <button mat-button [matMenuTriggerFor]="adminUserMenu">
+        <mat-icon>person</mat-icon>
+        {{ getUserDisplayName(user) }}
+      </button>
+      <mat-menu #adminUserMenu="matMenu">
+        <div class="px-4 py-2 text-gray-600 text-sm">
+          Signed in as<br>
+          <strong>{{ user.email }}</strong>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          Logout
+        </button>
+      </mat-menu>
+    </ng-container>
+
+    <!-- Web User Menu -->
+    <ng-container *ngIf="webAuth.user$ | async as user">
+      <button mat-button [matMenuTriggerFor]="webUserMenu">
+        <mat-icon>person</mat-icon>
+        {{ getUserDisplayName(user) }}
+      </button>
+      <mat-menu #webUserMenu="matMenu">
+        <div class="px-4 py-2 text-gray-600 text-sm">
+          Signed in as<br>
+          <strong>{{ user.email }}</strong>
+        </div>
+        <mat-divider></mat-divider>
+        <a mat-menu-item routerLink="/profile">
+          <mat-icon>account_circle</mat-icon>
+          Profile
+        </a>
+        <a mat-menu-item routerLink="/wishlist">
+          <mat-icon>favorite</mat-icon>
+          Wishlist
+        </a>
+        <a mat-menu-item routerLink="/orders">
+          <mat-icon>receipt</mat-icon>
+          Orders
+        </a>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          Logout
+        </button>
+      </mat-menu>
+    </ng-container>
+
+    <!-- Login Buttons -->
+    <ng-container *ngIf="!(adminAuth.user$ | async) && !(webAuth.user$ | async)">
+      <div class="flex gap-2">
+        <a mat-button routerLink="/admin/login">
+          <mat-icon>admin_panel_settings</mat-icon>
+          Admin Login
+        </a>
+        <a mat-button routerLink="/login">
+          <mat-icon>login</mat-icon>
+          Store Login
+        </a>
+      </div>
+    </ng-container>
+  </nav>
+
+  <!-- Mobile Navigation -->
+  <button mat-icon-button class="md:hidden" [matMenuTriggerFor]="mobileMenu">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <mat-menu #mobileMenu="matMenu">
+    <a mat-menu-item routerLink="/store">
+      <mat-icon>store</mat-icon>
+      Store
+    </a>
+
+    <!-- Admin Navigation -->
+    <ng-container *ngIf="adminAuth.user$ | async">
+      <mat-divider></mat-divider>
+      <a mat-menu-item routerLink="/admin/dashboard">
+        <mat-icon>dashboard</mat-icon>
+        Dashboard
+      </a>
+      <a mat-menu-item routerLink="/inventory">
+        <mat-icon>inventory_2</mat-icon>
+        Inventory
+      </a>
+      <a mat-menu-item routerLink="/pos">
+        <mat-icon>point_of_sale</mat-icon>
+        POS
+      </a>
+      <a mat-menu-item routerLink="/admin/settings/branches">
+        <mat-icon>store</mat-icon>
+        Branches
+      </a>
+      <a mat-menu-item routerLink="/admin/settings/users">
+        <mat-icon>people</mat-icon>
+        Users
+      </a>
+      <a mat-menu-item routerLink="/admin/settings/general">
+        <mat-icon>settings</mat-icon>
+        Settings
+      </a>
+    </ng-container>
+
+    <!-- Web User Navigation -->
+    <ng-container *ngIf="webAuth.user$ | async">
+      <mat-divider></mat-divider>
+      <a mat-menu-item routerLink="/profile">
+        <mat-icon>account_circle</mat-icon>
+        Profile
+      </a>
+      <a mat-menu-item routerLink="/wishlist">
+        <mat-icon>favorite</mat-icon>
+        Wishlist
+      </a>
+      <a mat-menu-item routerLink="/orders">
+        <mat-icon>receipt</mat-icon>
+        Orders
+      </a>
+    </ng-container>
+
+    <!-- Cart (only for web users) -->
+    <ng-container *ngIf="!(adminAuth.user$ | async)">
+      <mat-divider></mat-divider>
+      <a mat-menu-item routerLink="/cart">
+        <mat-icon [matBadge]="cartItemCount$ | async" matBadgeColor="accent">shopping_cart</mat-icon>
+        Cart
+      </a>
+    </ng-container>
+
+    <!-- Logout for authenticated users -->
+    <ng-container *ngIf="(adminAuth.user$ | async) || (webAuth.user$ | async)">
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </button>
+    </ng-container>
+
+    <!-- Login buttons for unauthenticated users -->
+    <ng-container *ngIf="!(adminAuth.user$ | async) && !(webAuth.user$ | async)">
+      <mat-divider></mat-divider>
+      <a mat-menu-item routerLink="/admin/login">
+        <mat-icon>admin_panel_settings</mat-icon>
+        Admin Login
+      </a>
+      <a mat-menu-item routerLink="/login">
+        <mat-icon>login</mat-icon>
+        Store Login
+      </a>
+    </ng-container>
+  </mat-menu>
+</mat-toolbar>
+
+<router-outlet></router-outlet>

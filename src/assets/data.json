@@ -1,0 +1,28 @@
+{
+  "products": [
+    {
+      "id": "1",
+      "name": "Vitamin C 1000mg",
+      "description": "High-potency vitamin C supplement",
+      "price": 19.99,
+      "quantity": 100,
+      "sku": "VIT-C1000"
+    },
+    {
+      "id": "2",
+      "name": "Omega-3 Fish Oil",
+      "description": "Premium fish oil supplement",
+      "price": 24.99,
+      "quantity": 75,
+      "sku": "OMEGA3"
+    },
+    {
+      "id": "3",
+      "name": "Magnesium Complex",
+      "description": "High absorption magnesium blend",
+      "price": 18.99,
+      "quantity": 50,
+      "sku": "MAG500"
+    }
+  ]
+}
