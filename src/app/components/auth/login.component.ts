@@ -5,8 +5,10 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
+import { LoginResponse } from '../../models/auth.model';
 
 @Component({
   selector: 'app-login',
@@ -17,7 +19,8 @@ import { Router } from '@angular/router';
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-100">
@@ -50,13 +53,28 @@ export class LoginComponent {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private snackBar: MatSnackBar
   ) {}
 
-  onSubmit() {
-    this.authService.signIn(this.email, this.password).subscribe({
-      next: () => this.router.navigate(['/']),
-      error: (error) => console.error('Login failed:', error)
+  onSubmit(): void {
+    if (!this.email || !this.password) {
+      this.snackBar.open('Please enter both email and password', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.authService.login(this.email, this.password).subscribe({
+      next: (response: LoginResponse) => {
+        if (response.success) {
+          this.router.navigate(['/inventory']);
+        } else {
+          this.snackBar.open(response.message || 'Login failed', 'Close', { duration: 3000 });
+        }
+      },
+      error: (error: { error?: { message: string } }) => {
+        console.error('Login failed:', error);
+        this.snackBar.open(error.error?.message || 'Login failed', 'Close', { duration: 3000 });
+      }
     });
   }
 }
